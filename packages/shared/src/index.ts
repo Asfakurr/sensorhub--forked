@@ -42,6 +42,21 @@ export interface CreateReadingInput {
   recordedAt?: string;
 }
 
+export type AlertKind = 'temperature_high';
+
+/** Raised by an alert rule in apps/api/src/alerts when a reading crosses a threshold. */
+export interface Alert {
+  id: string;
+  deviceId: string;
+  kind: AlertKind;
+  message: string;
+  /** The reading value that triggered the alert. */
+  value: number;
+  createdAt: string;
+}
+
 /** Events pushed on the server-sent events stream at GET /api/stream. */
 export type StreamEvent =
-  { type: 'reading'; data: Reading } | { type: 'ping'; data: { at: string } };
+  | { type: 'reading'; data: Reading }
+  | { type: 'alert'; data: Alert }
+  | { type: 'ping'; data: { at: string } };
