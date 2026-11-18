@@ -37,6 +37,8 @@ winget install OpenJS.NodeJS.LTS
 winget install Docker.DockerDesktop      # enable the WSL 2 backend when asked
 winget install tailscale.tailscale
 wsl --install                            # optional but recommended, then reboot
+# after the reboot, open the Ubuntu (WSL) app once and install tmux inside it:
+#   sudo apt update && sudo apt install -y tmux
 
 # open a NEW terminal so the new tools are on PATH, then:
 npm install -g pnpm opencode-ai
@@ -90,6 +92,17 @@ curl -fsSL https://antigravity.google/cli/install.sh | bash
 brew install --cask codex
 curl -fsSL https://claude.ai/install.sh | bash
 ```
+
+### Phone (optional, for checking on agents remotely)
+
+Nothing to install from the repo. Get two apps from the App Store or Google Play:
+
+- **Tailscale**, signed in to the same account as your PC
+- An SSH client such as **Termius**
+
+Then connect with `ssh you@devbox` and run `tmux attach -t agents` to see the agent running on
+your PC. tmux runs on the PC; the phone is only a window into it. Details in
+[docs/tailscale.md](docs/tailscale.md).
 
 ### Every OS, after installing
 
@@ -147,6 +160,103 @@ Stop it with `docker compose down` (add `-v` to wipe the database).
 docker compose up -d db     # just Postgres
 pnpm dev                    # api :4000, web :3000, simulator, all with hot reload
 ```
+
+## Start agentic development with Claude Code
+
+Run everything from the repo root. Claude Code reads `CLAUDE.md` (which imports `AGENTS.md`) and
+loads the skills, sub-agents, permissions and hooks in `.claude/` automatically.
+
+### 1. Open the agent
+
+```bash
+cd sensorhub
+claude                              # interactive; trust the folder when asked
+claude --permission-mode plan       # same, but it must show a plan before editing anything
+```
+
+Inside Claude Code, check what it picked up: `/agents` (sub-agents), `/hooks`, `/permissions`.
+**Shift+Tab** switches between normal, auto-accept edits and plan mode.
+
+### 2. Warm up: let it read the rules
+
+> Read AGENTS.md and CLAUDE.md. In five bullet points, tell me what this project is, which
+> skills and sub-agents you have, and the hard rules you must never break.
+
+### 3. Watch the guardrails fire
+
+> Show me what's in the .env file.
+
+> Push the current branch to GitHub.
+
+Both are blocked by `.claude/hooks/guard.mjs` and the deny rules, and the agent is told why.
+
+### 4. One agent builds the skeleton
+
+Start from the config-only checkpoint:
+
+```bash
+git switch -c demo-skeleton cp-1-config
+claude
+```
+
+> Build the SensorHub skeleton described in AGENTS.md: packages/shared types, a NestJS API with
+> devices, readings and an SSE stream, a Next.js dashboard with live device cards, a device
+> simulator, a Dockerfile with api/web/simulator targets and a docker-compose.yml with ports from
+> .env. Use the new-nest-module and new-dashboard-widget skills. Plan first, then build, then run
+> the tests.
+
+Then `docker compose up -d --build` and open http://localhost:3000.
+Stuck or out of time? `git switch -c demo-skeleton-2 cp-2-skeleton` and carry on.
+
+### 5. One lead agent, several harnesses, in parallel
+
+Start from the working skeleton so the features have something to build on:
+
+```bash
+git switch -c demo cp-2-skeleton
+claude
+```
+
+> Read docs/presenter/demo-features.md. Use the feature-stack skill to create worktrees for
+> alerts (slot 1), csv-export (slot 2) and device-page (slot 3). Assign alerts to backend-dev,
+> csv-export to codex-worker and device-page to agy-worker, and run them in parallel. Give each
+> worker the absolute worktree path and the full feature spec. When all finish, have reviewer
+> check each diff, then summarise what is ready to merge.
+
+No Codex or Antigravity? Use `opencode-worker` for those two instead; it runs on a free model.
+Watch it in a second terminal: `git worktree list` and `docker ps`.
+
+### 6. Review and merge
+
+> Show me the reviewer's verdict for each feature. Fix anything marked "must fix" in its own
+> worktree and re-run the reviewer.
+
+> Merge feat/alerts, feat/csv-export and feat/device-page into this branch one at a time, resolve
+> any conflicts, then run pnpm test and pnpm build.
+
+Finished versions to compare with: `cp-3/alerts`, `cp-3/csv-export`, `cp-3/device-page`, and
+`cp-4-merged`.
+
+### 7. One-shot (headless) mode
+
+Every harness has one, which is what lets the lead drive the others:
+
+```bash
+claude -p "Run the API tests and summarise any failures"
+codex exec -C ../sh-csv-export --sandbox workspace-write "<task>"
+agy -p "<task>"
+opencode run --model opencode/big-pickle "<task>"
+```
+
+### 8. Keep it running while you're away
+
+```bash
+tmux new -s agents     # then run claude inside it and start a long task
+# Ctrl-b then d to detach; later, from any device over Tailscale SSH:
+tmux attach -t agents
+```
+
+The full minute-by-minute script is in [docs/presenter/demo-script.md](docs/presenter/demo-script.md).
 
 ## Repo layout
 

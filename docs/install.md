@@ -23,6 +23,8 @@ winget install OpenJS.NodeJS.LTS
 winget install Docker.DockerDesktop      # enable the WSL 2 backend when asked
 winget install tailscale.tailscale
 wsl --install                            # optional but recommended, then reboot
+# after the reboot, open the Ubuntu (WSL) app once and install tmux inside it:
+#   sudo apt update && sudo apt install -y tmux
 # open a NEW terminal, then:
 npm install -g pnpm opencode-ai
 irm https://antigravity.google/cli/install.ps1 | iex
