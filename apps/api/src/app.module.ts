@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { AlertsModule } from './alerts/alerts.module';
 import { DevicesModule } from './devices/devices.module';
 import { HealthController } from './health/health.controller';
 import { ReadingsModule } from './readings/readings.module';
@@ -21,6 +22,7 @@ import { StreamModule } from './stream/stream.module';
     StreamModule,
     DevicesModule,
     ReadingsModule,
+    AlertsModule,
   ],
   controllers: [HealthController],
 })
