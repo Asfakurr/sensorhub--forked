@@ -1,6 +1,7 @@
 'use client';
 
 import type { Device, Reading, StreamEvent } from '@sensorhub/shared';
+import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
 import { timeAgo } from '@/lib/sparkline';
 import { useStream } from '@/lib/use-stream';
@@ -87,7 +88,9 @@ export function DeviceGrid({
             return (
               <article key={device.id} className="card">
                 <header>
-                  <h3>{device.name}</h3>
+                  <h3>
+                    <Link href={`/devices/${encodeURIComponent(device.id)}`}>{device.name}</Link>
+                  </h3>
                   <span className="muted mono">{device.id}</span>
                 </header>
                 <div className="metrics">

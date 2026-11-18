@@ -225,3 +225,21 @@ th {
 .alert-temperature_high {
   border-left-color: var(--red);
 }
+
+/* Device detail page (feat/device-page) */
+.grid-2 {
+  grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
+}
+.card h3 a {
+  text-decoration: none;
+}
+.card h3 a:hover {
+  color: var(--accent);
+}
+.section-head > div {
+  display: grid;
+  gap: 4px;
+}
+.section-head a.muted {
+  text-decoration: none;
+}
