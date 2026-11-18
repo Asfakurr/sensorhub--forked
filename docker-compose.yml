@@ -1,0 +1,51 @@
+# One stack per git worktree. Ports come from .env (see .env.example), so
+#   docker compose -p sh-alerts up -d --build
+# in ../sh-alerts runs a second, fully isolated copy next to the main one.
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: sensorhub
+      POSTGRES_PASSWORD: sensorhub # local dev only, never funnel this port
+      POSTGRES_DB: sensorhub
+    ports:
+      - '${DB_PORT:-5432}:5432'
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U sensorhub']
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+  api:
+    build: { context: ., target: api }
+    environment:
+      DATABASE_URL: postgres://sensorhub:sensorhub@db:5432/sensorhub
+      PORT: 4000
+    ports:
+      - '${API_PORT:-4000}:4000'
+    depends_on:
+      db: { condition: service_healthy }
+    restart: unless-stopped
+
+  web:
+    build: { context: ., target: web }
+    environment:
+      API_URL: http://api:4000
+    ports:
+      - '${WEB_PORT:-3000}:3000'
+    depends_on: [api]
+    restart: unless-stopped
+
+  simulator:
+    build: { context: ., target: simulator }
+    environment:
+      API_URL: http://api:4000
+      DEVICE_COUNT: 5
+      INTERVAL_MS: 3000
+    depends_on: [api]
+    restart: unless-stopped
+
+volumes:
+  pgdata:

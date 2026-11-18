@@ -1,0 +1,26 @@
+{
+  "name": "web",
+  "version": "0.1.0",
+  "private": true,
+  "description": "SensorHub dashboard (Next.js App Router)",
+  "scripts": {
+    "build": "next build",
+    "dev": "next dev",
+    "start": "next start -H 0.0.0.0 -p 3000",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@sensorhub/shared": "workspace:*",
+    "next": "^16.4.6",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
+    "server-only": "^0.0.1"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "@types/react": "^19.2.0",
+    "@types/react-dom": "^19.2.0",
+    "typescript": "~6.0.3",
+    "vitest": "^5.1.1"
+  }
+}

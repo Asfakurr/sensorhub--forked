@@ -1,9 +1,5 @@
 # SensorHub
 
-> **Checkpoint `cp-1-config`:** the agent configuration, scripts and docs are in place, but
-> there is no app code yet. The live demo has Claude Code build the skeleton from here.
-> Check out `main` for the finished app.
-
 A small IoT telemetry platform built by coordinated AI coding agents. It's the hands-on project
 for the **Agentic Software Development** training session.
 

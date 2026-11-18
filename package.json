@@ -6,9 +6,10 @@
     "node": ">=22"
   },
   "scripts": {
-    "build": "echo \"nothing to build yet (cp-1-config)\"",
+    "postinstall": "pnpm --filter @sensorhub/shared build",
+    "build": "pnpm -r build",
     "dev": "pnpm -r --parallel dev",
-    "test": "echo \"no tests yet (cp-1-config)\"",
+    "test": "pnpm -r test",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "format": "prettier --write .",
