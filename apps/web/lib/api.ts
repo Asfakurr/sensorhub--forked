@@ -12,3 +12,11 @@ export async function apiGet<T>(path: string): Promise<T> {
   if (!res.ok) throw new Error(`GET ${path} failed: HTTP ${res.status}`);
   return (await res.json()) as T;
 }
+
+/** Like apiGet, but returns null on 404 so pages can call notFound(). */
+export async function apiGetOrNull<T>(path: string): Promise<T | null> {
+  const res = await fetch(`${API_URL}/api${path}`, { cache: 'no-store' });
+  if (res.status === 404) return null;
+  if (!res.ok) throw new Error(`GET ${path} failed: HTTP ${res.status}`);
+  return (await res.json()) as T;
+}
