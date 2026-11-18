@@ -62,4 +62,13 @@ export class ReadingsService {
     });
     return rows.map(toReading);
   }
+
+  /** All readings for one device since a point in time, oldest first. */
+  async findForDevice(deviceId: string, since: Date): Promise<Reading[]> {
+    const rows = await this.readings.find({
+      where: { deviceId, recordedAt: MoreThanOrEqual(since) },
+      order: { recordedAt: 'ASC' },
+    });
+    return rows.map(toReading);
+  }
 }
