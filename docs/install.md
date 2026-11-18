@@ -53,7 +53,7 @@ curl -fsSL https://claude.ai/install.sh | bash
 ```bash
 brew install git node pnpm tmux
 brew install --cask docker               # then open Docker Desktop once
-# Tailscale: install the app from https://tailscale.com/download and sign in
+brew install --cask tailscale-app        # then open Tailscale and sign in
 brew install anomalyco/tap/opencode      # or: npm install -g opencode-ai
 curl -fsSL https://antigravity.google/cli/install.sh | bash
 # optional, only with a paid plan:
