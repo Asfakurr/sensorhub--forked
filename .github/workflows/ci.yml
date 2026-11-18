@@ -1,0 +1,42 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm lint
+      - run: pnpm test
+      - run: pnpm build
+
+  docker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: Build all images
+        run: docker compose build
+      - name: Start the stack and check it end to end
+        run: |
+          docker compose up -d
+          for i in $(seq 1 60); do
+            curl -fs 'localhost:3000/api/readings?limit=1' | grep -q deviceId && break
+            sleep 2
+          done
+          curl -fs localhost:4000/api/health
+          curl -fs localhost:3000/api/devices | grep dev-001
+          curl -fs localhost:3000 | grep -q SensorHub
+      - name: Logs on failure
+        if: failure()
+        run: docker compose logs --tail=100

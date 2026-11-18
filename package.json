@@ -1,0 +1,26 @@
+{
+  "name": "sensorhub",
+  "private": true,
+  "packageManager": "pnpm@12.21.0",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "build": "echo \"nothing to build yet (cp-1-config)\"",
+    "dev": "pnpm -r --parallel dev",
+    "test": "echo \"no tests yet (cp-1-config)\"",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --write .",
+    "verify-setup": "node scripts/verify-setup.mjs",
+    "sync-skills": "node scripts/sync-skills.mjs"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.0",
+    "eslint": "^10.15.0",
+    "globals": "^17.0.0",
+    "prettier": "^3.10.1",
+    "typescript": "~6.0.3",
+    "typescript-eslint": "^8.73.0"
+  }
+}

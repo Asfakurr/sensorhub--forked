@@ -1,0 +1,13 @@
+# Codex project settings. Codex only loads this file once you trust the project
+# (it asks the first time you run `codex` in this folder).
+# Rules live in AGENTS.md; skills in .agents/skills/.
+
+# Codex can edit files inside the repo, but nothing outside it.
+sandbox_mode = "workspace-write"
+
+# Ask before anything that needs to leave the sandbox (network, files outside the repo).
+approval_policy = "on-request"
+
+[sandbox_workspace_write]
+# No network from inside the sandbox: pnpm install / docker need approval.
+network_access = false
