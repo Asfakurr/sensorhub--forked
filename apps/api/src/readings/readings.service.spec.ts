@@ -64,4 +64,13 @@ describe('ReadingsService', () => {
       expect.objectContaining({ order: { recordedAt: 'DESC' }, take: 100 }),
     );
   });
+
+  it('exports one device oldest first from a point in time', async () => {
+    repo.find.mockResolvedValue([]);
+    const since = new Date('2026-01-01T00:00:00Z');
+    await service.findForDevice('dev-001', since);
+    expect(repo.find).toHaveBeenCalledWith(
+      expect.objectContaining({ order: { recordedAt: 'ASC' } }),
+    );
+  });
 });
