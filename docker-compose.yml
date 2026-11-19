@@ -44,6 +44,8 @@ services:
       API_URL: http://api:4000
       DEVICE_COUNT: 5
       INTERVAL_MS: 3000
+    ports:
+      - '${SIMULATOR_PORT:-5001}:5001'
     depends_on: [api]
     restart: unless-stopped
 
