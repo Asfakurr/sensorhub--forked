@@ -1,11 +1,12 @@
 'use client';
 
-import type { Device, Reading, StreamEvent } from '@sensorhub/shared';
+import { getDeviceStatus, type Device, type Reading, type StreamEvent } from '@sensorhub/shared';
 import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
-import { timeAgo } from '@/lib/sparkline';
+import { formatLastSeen } from '@/lib/status';
 import { useStream } from '@/lib/use-stream';
 import { Sparkline } from './sparkline';
+import { StatusBadge } from './status-badge';
 
 const HISTORY = 40;
 
@@ -33,11 +34,11 @@ export function DeviceGrid({
   initialReadings: Reading[];
 }) {
   const [rows, setRows] = useState(() => buildRows(initialDevices, initialReadings));
-  const [, setNow] = useState(0);
+  const [now, setNow] = useState(() => Date.now());
 
-  // Re-render every 5 s so "last seen" stays fresh.
+  // Re-render every 1 s so "last seen" and status transitions stay responsive.
   useEffect(() => {
-    const t = setInterval(() => setNow(Date.now()), 5000);
+    const t = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(t);
   }, []);
 
@@ -53,13 +54,19 @@ export function DeviceGrid({
           battery: r.battery,
           firstSeen: r.recordedAt,
           lastSeen: r.recordedAt,
+          status: getDeviceStatus(r.recordedAt),
         },
         history: [],
       };
       return {
         ...prev,
         [r.deviceId]: {
-          device: { ...row.device, battery: r.battery, lastSeen: r.recordedAt },
+          device: {
+            ...row.device,
+            battery: r.battery,
+            lastSeen: r.recordedAt,
+            status: getDeviceStatus(r.recordedAt),
+          },
           history: [...row.history, r].slice(-HISTORY),
         },
       };
@@ -85,13 +92,17 @@ export function DeviceGrid({
         <div className="grid">
           {list.map(({ device, history }) => {
             const last = history.at(-1);
+            const status = getDeviceStatus(device.lastSeen, now);
             return (
               <article key={device.id} className="card">
                 <header>
-                  <h3>
-                    <Link href={`/devices/${encodeURIComponent(device.id)}`}>{device.name}</Link>
-                  </h3>
-                  <span className="muted mono">{device.id}</span>
+                  <div className="card-title">
+                    <h3>
+                      <Link href={`/devices/${encodeURIComponent(device.id)}`}>{device.name}</Link>
+                    </h3>
+                    <span className="muted mono">{device.id}</span>
+                  </div>
+                  <StatusBadge status={status} />
                 </header>
                 <div className="metrics">
                   <div>
@@ -106,7 +117,14 @@ export function DeviceGrid({
                     <span className="battery-fill" style={{ width: `${device.battery ?? 0}%` }} />
                   </span>
                   <span className="muted">{device.battery?.toFixed(0) ?? '–'}%</span>
-                  <span className="muted right">{timeAgo(device.lastSeen)}</span>
+                  <span
+                    className="muted right"
+                    title={
+                      device.lastSeen ? new Date(device.lastSeen).toLocaleString() : undefined
+                    }
+                  >
+                    {formatLastSeen(device.lastSeen, now)}
+                  </span>
                 </footer>
               </article>
             );

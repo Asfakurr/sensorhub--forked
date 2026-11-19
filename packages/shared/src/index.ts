@@ -5,6 +5,33 @@
  * in the same change, and run `pnpm -r build` to catch mismatches.
  */
 
+/** Device offline threshold: devices not seen for this duration are considered offline. */
+export const DEVICE_OFFLINE_THRESHOLD_MS = 10_000;
+
+export type DeviceStatus = 'online' | 'offline';
+
+export function getDeviceStatus(
+  lastSeen: string | Date,
+  now: number = Date.now(),
+  thresholdMs: number = DEVICE_OFFLINE_THRESHOLD_MS,
+): DeviceStatus {
+  if (!lastSeen) {
+    return 'offline';
+  }
+  const lastSeenMs =
+    typeof lastSeen === 'string'
+      ? new Date(lastSeen).getTime()
+      : lastSeen instanceof Date
+        ? lastSeen.getTime()
+        : new Date(lastSeen).getTime();
+
+  if (Number.isNaN(lastSeenMs)) {
+    return 'offline';
+  }
+
+  return now - lastSeenMs <= thresholdMs ? 'online' : 'offline';
+}
+
 /** A physical (here: simulated) embedded device that reports telemetry. */
 export interface Device {
   id: string;
@@ -14,6 +41,7 @@ export interface Device {
   battery: number | null;
   firstSeen: string;
   lastSeen: string;
+  status: DeviceStatus;
 }
 
 /** One telemetry sample from a device. */

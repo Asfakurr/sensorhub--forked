@@ -1,10 +1,11 @@
-import type { Device, Reading } from '@sensorhub/shared';
+import { getDeviceStatus, type Device, type Reading } from '@sensorhub/shared';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { AutoRefresh } from '@/components/auto-refresh';
 import { Sparkline } from '@/components/sparkline';
+import { StatusBadge } from '@/components/status-badge';
 import { apiGet, apiGetOrNull } from '@/lib/api';
-import { timeAgo } from '@/lib/sparkline';
+import { formatLastSeen } from '@/lib/status';
 import { downsample, summarize, type Summary } from '@/lib/stats';
 
 export const dynamic = 'force-dynamic';
@@ -53,6 +54,7 @@ export default async function DevicePage({ params }: { params: Promise<{ id: str
   const readings = [...newestFirst].reverse(); // oldest → newest for charts
   const temps = readings.map((r) => r.temperature);
   const hums = readings.map((r) => r.humidity);
+  const status = getDeviceStatus(device.lastSeen);
 
   return (
     <>
@@ -62,12 +64,18 @@ export default async function DevicePage({ params }: { params: Promise<{ id: str
           <Link href="/" className="muted">
             ← All devices
           </Link>
-          <h2>
-            {device.name} <span className="muted mono">{device.id}</span>
-          </h2>
+          <div className="device-title-row">
+            <h2>
+              {device.name} <span className="muted mono">{device.id}</span>
+            </h2>
+            <StatusBadge status={status} />
+          </div>
         </div>
-        <span className="muted">
-          battery {device.battery?.toFixed(0) ?? '–'}% · last seen {timeAgo(device.lastSeen)}
+        <span
+          className="muted"
+          title={device.lastSeen ? new Date(device.lastSeen).toLocaleString() : undefined}
+        >
+          battery {device.battery?.toFixed(0) ?? '–'}% · last seen {formatLastSeen(device.lastSeen)}
         </span>
       </div>
 

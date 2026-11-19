@@ -58,19 +58,20 @@ Use specialized subagents for independent work:
 - backend-agent: NestJS/API/shared backend changes
 - frontend-agent: Next.js dashboard changes
 - simulator-agent: simulator/demo/test controls
-- reviewer-agent: read-only review and verification
+- reviewer-agent: read-only review and verification (invoked strictly after all implementation workers have reported completion)
 
 Pass every worker a self-contained task. Include the exact worktree path when one exists.
 Parallelize only genuinely independent tasks.
 
-### Phase 4 — Integrate
-After workers finish:
-1. Inspect their diffs and test results.
-2. Run reviewer-agent against each candidate.
-3. If review fails, send a targeted correction task to the responsible worker.
-4. Re-review after correction.
-5. Integrate only verified work.
-6. Run final project-level verification.
+### Phase 4 — Integrate & Review
+After ALL implementation workers have explicitly completed and reported:
+1. Verify that every assigned worker has finished and returned its completion handoff.
+2. Inspect their diffs, test results, and cross-package contract consistency.
+3. Invoke reviewer-agent as a read-only audit gate across the full diff.
+4. If review fails, send a targeted correction task to the responsible worker.
+5. Re-review only after the worker reports correction completion.
+6. Integrate only verified work.
+7. Run final project-level verification.
 
 ### Phase 5 — Report
 Report:

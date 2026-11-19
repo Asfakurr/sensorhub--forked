@@ -28,14 +28,15 @@ or needs independent review before integration.
    - Backend contract first when API changes are required.
    - Simulator work may run in parallel if independent.
    - Frontend starts after the API contract is known.
-   - Reviewer runs after implementation workers finish.
+   - Reviewer runs strictly after ALL implementation workers have explicitly completed and reported their handoffs.
    - Never assign overlapping write scopes to concurrent workers.
 
 4. **Review**
+   - **Pre-condition**: Invoke `reviewer-agent` ONLY after every assigned implementation worker has finished and returned its completion report. Never invoke the reviewer while an implementation worker is active or pending.
    - Use `reviewer-agent` as a read-only gate.
    - If it returns NEEDS CHANGES, send only the concrete corrections back to the
      responsible worker.
-   - Re-review after fixes.
+   - Re-review only after the responsible worker reports correction completion.
 
 5. **Verify**
    - Run the required package tests, lint, and builds.

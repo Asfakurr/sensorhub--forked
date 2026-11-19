@@ -9,6 +9,7 @@ export interface DeviceState {
   /** Where this device's temperature and humidity drift back to. */
   baseTemperature: number;
   baseHumidity: number;
+  paused?: boolean;
 }
 
 const NAMES = [
@@ -20,12 +21,15 @@ const NAMES = [
   'Lab bench',
 ];
 
+const pausedDeviceIds = new Set<string>();
+
 export function createDevices(count: number, rand: () => number = Math.random): DeviceState[] {
   return Array.from({ length: count }, (_, i) => {
     const temperature = 18 + rand() * 8;
     const humidity = 35 + rand() * 20;
+    const id = `dev-${String(i + 1).padStart(3, '0')}`;
     return {
-      id: `dev-${String(i + 1).padStart(3, '0')}`,
+      id,
       name:
         NAMES[i % NAMES.length] + (i >= NAMES.length ? ` ${Math.floor(i / NAMES.length) + 1}` : ''),
       temperature,
@@ -33,8 +37,48 @@ export function createDevices(count: number, rand: () => number = Math.random): 
       battery: 60 + rand() * 40,
       baseTemperature: temperature,
       baseHumidity: humidity,
+      paused: pausedDeviceIds.has(id),
     };
   });
+}
+
+export function pauseDevice(deviceId: string, devices?: DeviceState[]): boolean {
+  pausedDeviceIds.add(deviceId);
+  if (devices) {
+    const dev = devices.find((d) => d.id === deviceId);
+    if (dev) {
+      dev.paused = true;
+    }
+  }
+  return true;
+}
+
+export function resumeDevice(deviceId: string, devices?: DeviceState[]): boolean {
+  const wasPausedInSet = pausedDeviceIds.delete(deviceId);
+  let wasPausedInList = false;
+  if (devices) {
+    const dev = devices.find((d) => d.id === deviceId);
+    if (dev) {
+      wasPausedInList = Boolean(dev.paused);
+      dev.paused = false;
+    }
+  }
+  return wasPausedInSet || wasPausedInList;
+}
+
+export function isDevicePaused(deviceOrId: DeviceState | string): boolean {
+  if (typeof deviceOrId === 'string') {
+    return pausedDeviceIds.has(deviceOrId);
+  }
+  return Boolean(deviceOrId.paused || pausedDeviceIds.has(deviceOrId.id));
+}
+
+export function getPausedDeviceIds(): string[] {
+  return Array.from(pausedDeviceIds);
+}
+
+export function resetPausedDevices(): void {
+  pausedDeviceIds.clear();
 }
 
 const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
@@ -61,7 +105,13 @@ export function nextReading(
     100,
   );
   const battery = clamp(state.battery - rand() * 0.05, 0, 100);
-  const next = { ...state, temperature, humidity, battery };
+  const next: DeviceState = {
+    ...state,
+    temperature,
+    humidity,
+    battery,
+    paused: isDevicePaused(state),
+  };
   return {
     state: next,
     reading: {
