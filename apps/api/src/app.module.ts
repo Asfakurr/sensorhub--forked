@@ -3,6 +3,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { AlertsModule } from './alerts/alerts.module';
 import { DevicesModule } from './devices/devices.module';
 import { HealthController } from './health/health.controller';
+import { PredictionsModule } from './predictions/predictions.module';
 import { ReadingsModule } from './readings/readings.module';
 import { StreamModule } from './stream/stream.module';
 
@@ -23,6 +24,7 @@ import { StreamModule } from './stream/stream.module';
     DevicesModule,
     ReadingsModule,
     AlertsModule,
+    PredictionsModule,
   ],
   controllers: [HealthController],
 })

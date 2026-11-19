@@ -83,6 +83,23 @@ export interface Alert {
   createdAt: string;
 }
 
+export interface PredictionPoint {
+  horizonMinutes: number;
+  targetTime: string;
+  predictedTemperature: number;
+}
+
+export interface SensorPrediction {
+  deviceId: string;
+  sensorType: 'temperature';
+  calculatedAt: string;
+  sampleCount: number;
+  trendSlopePerMinute: number;
+  predictions: PredictionPoint[];
+  status: 'ok' | 'insufficient_data';
+  warning?: string;
+}
+
 /** Events pushed on the server-sent events stream at GET /api/stream. */
 export type StreamEvent =
   | { type: 'reading'; data: Reading }
