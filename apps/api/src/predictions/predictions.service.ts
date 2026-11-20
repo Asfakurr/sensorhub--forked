@@ -1,103 +1,108 @@
 import { Injectable } from '@nestjs/common';
-import type { SensorPrediction } from '@sensorhub/shared';
+import type { Reading, SensorPrediction } from '@sensorhub/shared';
+import { DevicesService } from '../devices/devices.service';
 import { ReadingsService } from '../readings/readings.service';
-import { QueryPredictionDto } from './dto/query-prediction.dto';
-import { linearRegression, slopePerMinuteFromPerMs } from './linear-regression';
+import { QueryPredictionsDto } from './dto/query-predictions.dto';
+import { linearRegression } from './linear-regression';
+
+const DEFAULT_WINDOW_MINUTES = 30;
+const PREDICTION_HORIZONS_MINUTES = [1, 5, 10] as const;
+const MILLISECONDS_PER_MINUTE = 60_000;
+
+interface TimedReading {
+  reading: Reading;
+  timestampMs: number;
+}
+
+function round(value: number, decimalPlaces: number): number {
+  if (!Number.isFinite(value)) return 0;
+  return Number(value.toFixed(decimalPlaces));
+}
+
+function toIso(timestampMs: number, fallback: string): string {
+  const date = new Date(timestampMs);
+  return Number.isNaN(date.getTime()) ? fallback : date.toISOString();
+}
 
 @Injectable()
 export class PredictionsService {
-  constructor(private readonly readingsService: ReadingsService) {}
+  constructor(
+    private readonly devicesService: DevicesService,
+    private readonly readingsService: ReadingsService,
+  ) {}
 
-  async getPredictionForDevice(deviceId: string, query: QueryPredictionDto): Promise<SensorPrediction> {
-    const limit = query.limit ?? 50;
-    const recent = await this.readingsService.findRecent({ deviceId, limit });
-    const readings = [...recent].reverse();
+  async getPredictionForDevice(
+    deviceId: string,
+    query: QueryPredictionsDto = {},
+  ): Promise<SensorPrediction> {
+    await this.devicesService.findOne(deviceId);
 
     const calculatedAtDate = new Date();
     const calculatedAt = calculatedAtDate.toISOString();
+    const requestedWindow = query.windowMinutes ?? DEFAULT_WINDOW_MINUTES;
+    const windowMinutes =
+      Number.isFinite(requestedWindow) && requestedWindow >= 1
+        ? requestedWindow
+        : DEFAULT_WINDOW_MINUTES;
+    const since = new Date(
+      calculatedAtDate.getTime() - windowMinutes * MILLISECONDS_PER_MINUTE,
+    );
+    const readings = await this.readingsService.findForDevice(deviceId, since);
+    const timedReadings = this.getTimedReadings(readings);
+    const base = timedReadings[0];
+    const baseTemperature = base?.reading.temperature ?? null;
+    const baseRecordedAt = base ? toIso(base.timestampMs, calculatedAt) : null;
 
-    if (!readings || readings.length === 0) {
-      return {
+    if (timedReadings.length < 2) {
+      return this.insufficientData(
         deviceId,
-        sensorType: 'temperature',
         calculatedAt,
-        sampleCount: 0,
-        trendSlopePerMinute: 0,
-        predictions: [],
-        status: 'insufficient_data',
-        warning: 'No temperature readings available for this device.',
-      };
+        baseTemperature,
+        baseRecordedAt,
+        timedReadings.length,
+      );
     }
 
-    if (readings.length === 1) {
-      const only = readings[0];
-      const baseTemp = Number.isFinite(only.temperature) ? only.temperature : 0;
-      return {
+    const last = timedReadings[timedReadings.length - 1];
+    const timeRangeSeconds = (last.timestampMs - base.timestampMs) / 1000;
+    if (!(timeRangeSeconds > 0) || !Number.isFinite(timeRangeSeconds)) {
+      return this.insufficientData(
         deviceId,
-        sensorType: 'temperature',
         calculatedAt,
-        sampleCount: 1,
-        trendSlopePerMinute: 0,
-        predictions: [
-          {
-            horizonMinutes: 1,
-            targetTime: new Date(calculatedAtDate.getTime() + 1 * 60_000).toISOString(),
-            predictedTemperature: baseTemp,
-          },
-          {
-            horizonMinutes: 5,
-            targetTime: new Date(calculatedAtDate.getTime() + 5 * 60_000).toISOString(),
-            predictedTemperature: baseTemp,
-          },
-          {
-            horizonMinutes: 10,
-            targetTime: new Date(calculatedAtDate.getTime() + 10 * 60_000).toISOString(),
-            predictedTemperature: baseTemp,
-          },
-        ],
-        status: 'insufficient_data',
-        warning: 'At least 2 readings are required for a trend-based prediction.',
-      };
+        baseTemperature,
+        baseRecordedAt,
+        timedReadings.length,
+      );
     }
 
-    const rawPoints = readings
-      .map((r) => ({
-        timestamp: new Date(r.recordedAt).getTime(),
-        value: r.temperature,
-      }))
-      .filter((p) => Number.isFinite(p.timestamp) && Number.isFinite(p.value));
-
-    if (rawPoints.length < 2) {
-      return {
-        deviceId,
-        sensorType: 'temperature',
-        calculatedAt,
-        sampleCount: rawPoints.length,
-        trendSlopePerMinute: 0,
-        predictions: [],
-        status: 'insufficient_data',
-        warning: 'Not enough valid temperature readings to compute a prediction.',
-      };
-    }
-
-    const t0 = rawPoints[0].timestamp;
-    const points = rawPoints.map((p) => ({ timestamp: p.timestamp - t0, value: p.value }));
-
+    const points = timedReadings.map(({ reading, timestampMs }) => ({
+      timestamp: (timestampMs - base.timestampMs) / 1000,
+      value: reading.temperature,
+    }));
     const { slope, intercept } = linearRegression(points);
-    const slopePerMinute = slopePerMinuteFromPerMs(slope);
-    const lastRelTs = points[points.length - 1].timestamp;
-    const lastAbsTs = rawPoints[rawPoints.length - 1].timestamp;
+    if (!Number.isFinite(slope) || !Number.isFinite(intercept)) {
+      return this.insufficientData(
+        deviceId,
+        calculatedAt,
+        baseTemperature,
+        baseRecordedAt,
+        timedReadings.length,
+      );
+    }
 
-    const horizons = [1, 5, 10];
-    const predictions = horizons.map((m) => {
-      const deltaMs = m * 60_000;
-      const targetRelMs = lastRelTs + deltaMs;
-      const predicted = slope * targetRelMs + intercept;
-      const targetMs = lastAbsTs + deltaMs;
+    const slopePerMinute = round(slope * 60, 3);
+    const predictions = PREDICTION_HORIZONS_MINUTES.map((horizonMinutes) => {
+      const horizonSeconds = horizonMinutes * 60;
+      const predictedTemperature = slope * (timeRangeSeconds + horizonSeconds) + intercept;
+      const targetTime = toIso(
+        last.timestampMs + horizonMinutes * MILLISECONDS_PER_MINUTE,
+        calculatedAt,
+      );
+
       return {
-        horizonMinutes: m,
-        targetTime: new Date(targetMs).toISOString(),
-        predictedTemperature: Number.isFinite(predicted) ? predicted : 0,
+        horizonMinutes,
+        targetTime,
+        predictedTemperature: round(predictedTemperature, 2),
       };
     });
 
@@ -105,10 +110,45 @@ export class PredictionsService {
       deviceId,
       sensorType: 'temperature',
       calculatedAt,
-      sampleCount: points.length,
-      trendSlopePerMinute: slopePerMinute,
+      baseTemperature,
+      baseRecordedAt,
+      sampleCount: timedReadings.length,
+      slopePerMinute,
+      status: 'ready',
       predictions,
-      status: 'ok',
+    };
+  }
+
+  private getTimedReadings(readings: Reading[]): TimedReading[] {
+    return readings
+      .map((reading) => ({
+        reading,
+        timestampMs: new Date(reading.recordedAt).getTime(),
+      }))
+      .filter(
+        ({ reading, timestampMs }) =>
+          Number.isFinite(timestampMs) && Number.isFinite(reading.temperature),
+      )
+      .sort((a, b) => a.timestampMs - b.timestampMs);
+  }
+
+  private insufficientData(
+    deviceId: string,
+    calculatedAt: string,
+    baseTemperature: number | null,
+    baseRecordedAt: string | null,
+    sampleCount: number,
+  ): SensorPrediction {
+    return {
+      deviceId,
+      sensorType: 'temperature',
+      calculatedAt,
+      baseTemperature,
+      baseRecordedAt,
+      sampleCount,
+      slopePerMinute: 0,
+      status: 'insufficient_data',
+      predictions: [],
     };
   }
 }

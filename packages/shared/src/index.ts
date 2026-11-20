@@ -84,8 +84,8 @@ export interface Alert {
 }
 
 export interface PredictionPoint {
-  horizonMinutes: number;
-  targetTime: string;
+  horizonMinutes: number; // 1, 5, 10
+  targetTime: string; // ISO string
   predictedTemperature: number;
 }
 
@@ -93,11 +93,12 @@ export interface SensorPrediction {
   deviceId: string;
   sensorType: 'temperature';
   calculatedAt: string;
+  baseTemperature: number | null;
+  baseRecordedAt: string | null;
   sampleCount: number;
-  trendSlopePerMinute: number;
+  slopePerMinute: number;
+  status: 'ready' | 'insufficient_data';
   predictions: PredictionPoint[];
-  status: 'ok' | 'insufficient_data';
-  warning?: string;
 }
 
 /** Events pushed on the server-sent events stream at GET /api/stream. */
