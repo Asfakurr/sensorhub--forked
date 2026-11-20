@@ -1,7 +1,8 @@
-import { getDeviceStatus, type Device, type Reading } from '@sensorhub/shared';
+import { getDeviceStatus, type Device, type Reading, type SensorPrediction } from '@sensorhub/shared';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { AutoRefresh } from '@/components/auto-refresh';
+import { PredictionCard } from '@/components/prediction-card';
 import { Sparkline } from '@/components/sparkline';
 import { StatusBadge } from '@/components/status-badge';
 import { apiGet, apiGetOrNull } from '@/lib/api';
@@ -48,9 +49,12 @@ export default async function DevicePage({ params }: { params: Promise<{ id: str
   if (!device) notFound();
 
   const since = new Date(Date.now() - 24 * 3_600_000).toISOString();
-  const newestFirst = await apiGet<Reading[]>(
-    `/readings?deviceId=${encodeURIComponent(id)}&since=${encodeURIComponent(since)}&limit=${LIMIT}`,
-  );
+  const [newestFirst, prediction] = await Promise.all([
+    apiGet<Reading[]>(
+      `/readings?deviceId=${encodeURIComponent(id)}&since=${encodeURIComponent(since)}&limit=${LIMIT}`,
+    ),
+    apiGetOrNull<SensorPrediction>(`/devices/${encodeURIComponent(id)}/predictions`),
+  ]);
   const readings = [...newestFirst].reverse(); // oldest → newest for charts
   const temps = readings.map((r) => r.temperature);
   const hums = readings.map((r) => r.humidity);
@@ -92,6 +96,8 @@ export default async function DevicePage({ params }: { params: Promise<{ id: str
         <Metric label="Temperature" unit="°C" summary={summarize(temps)} values={temps} />
         <Metric label="Humidity" unit="% RH" summary={summarize(hums)} values={hums} />
       </div>
+
+      <PredictionCard prediction={prediction} />
 
       <section>
         <h2>Recent readings</h2>

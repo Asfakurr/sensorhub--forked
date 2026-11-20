@@ -291,3 +291,76 @@ th {
 .section-head a.muted {
   text-decoration: none;
 }
+
+/* Temperature forecast card (feat/sensor-prediction) */
+.prediction-card .metrics {
+  align-items: center;
+}
+.prediction-rate {
+  font-size: 22px;
+  font-weight: 700;
+}
+.trend-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin-left: 8px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: capitalize;
+  line-height: 1.4;
+  letter-spacing: 0.2px;
+  white-space: nowrap;
+}
+.trend-indicator::before {
+  content: '';
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+}
+.trend-rising {
+  background: var(--accent-tint);
+  color: var(--accent);
+}
+.trend-rising::before {
+  background: var(--accent);
+}
+.trend-falling {
+  background: #fef2f2;
+  color: var(--red);
+}
+.trend-falling::before {
+  background: var(--red);
+}
+.trend-stable {
+  background: var(--line);
+  color: var(--muted);
+}
+.trend-stable::before {
+  background: var(--muted);
+}
+.prediction-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+.prediction-point {
+  display: grid;
+  gap: 2px;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--bg);
+}
+.prediction-temperature {
+  font-size: 18px;
+  font-weight: 600;
+}
+@media (max-width: 600px) {
+  .prediction-grid {
+    grid-template-columns: 1fr;
+  }
+}
