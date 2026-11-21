@@ -1,10 +1,12 @@
-import type { Device, Reading } from '@sensorhub/shared';
+import { getDeviceStatus, type Device, type Reading, type SensorPrediction } from '@sensorhub/shared';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { AutoRefresh } from '@/components/auto-refresh';
+import { PredictionCard } from '@/components/prediction-card';
 import { Sparkline } from '@/components/sparkline';
+import { StatusBadge } from '@/components/status-badge';
 import { apiGet, apiGetOrNull } from '@/lib/api';
-import { timeAgo } from '@/lib/sparkline';
+import { formatLastSeen } from '@/lib/status';
 import { downsample, summarize, type Summary } from '@/lib/stats';
 
 export const dynamic = 'force-dynamic';
@@ -47,12 +49,16 @@ export default async function DevicePage({ params }: { params: Promise<{ id: str
   if (!device) notFound();
 
   const since = new Date(Date.now() - 24 * 3_600_000).toISOString();
-  const newestFirst = await apiGet<Reading[]>(
-    `/readings?deviceId=${encodeURIComponent(id)}&since=${encodeURIComponent(since)}&limit=${LIMIT}`,
-  );
+  const [newestFirst, prediction] = await Promise.all([
+    apiGet<Reading[]>(
+      `/readings?deviceId=${encodeURIComponent(id)}&since=${encodeURIComponent(since)}&limit=${LIMIT}`,
+    ),
+    apiGetOrNull<SensorPrediction>(`/devices/${encodeURIComponent(id)}/predictions`),
+  ]);
   const readings = [...newestFirst].reverse(); // oldest → newest for charts
   const temps = readings.map((r) => r.temperature);
   const hums = readings.map((r) => r.humidity);
+  const status = getDeviceStatus(device.lastSeen);
 
   return (
     <>
@@ -62,12 +68,18 @@ export default async function DevicePage({ params }: { params: Promise<{ id: str
           <Link href="/" className="muted">
             ← All devices
           </Link>
-          <h2>
-            {device.name} <span className="muted mono">{device.id}</span>
-          </h2>
+          <div className="device-title-row">
+            <h2>
+              {device.name} <span className="muted mono">{device.id}</span>
+            </h2>
+            <StatusBadge status={status} />
+          </div>
         </div>
-        <span className="muted">
-          battery {device.battery?.toFixed(0) ?? '–'}% · last seen {timeAgo(device.lastSeen)}
+        <span
+          className="muted"
+          title={device.lastSeen ? new Date(device.lastSeen).toLocaleString() : undefined}
+        >
+          battery {device.battery?.toFixed(0) ?? '–'}% · last seen {formatLastSeen(device.lastSeen)}
         </span>
       </div>
 
@@ -84,6 +96,8 @@ export default async function DevicePage({ params }: { params: Promise<{ id: str
         <Metric label="Temperature" unit="°C" summary={summarize(temps)} values={temps} />
         <Metric label="Humidity" unit="% RH" summary={summarize(hums)} values={hums} />
       </div>
+
+      <PredictionCard prediction={prediction} />
 
       <section>
         <h2>Recent readings</h2>
